@@ -1,21 +1,24 @@
-.PHONY: build optimize test deploy-testnet
+.PHONY: build test deploy-testnet
 
 build:
-	cargo build --target wasm32-unknown-unknown --release
-
-optimize: build
-	stellar contract optimize --wasm target/wasm32-unknown-unknown/release/project_registry.wasm
-	stellar contract optimize --wasm target/wasm32-unknown-unknown/release/investment_vault.wasm
+	stellar contract build
 
 test:
 	cargo test
 
-deploy-testnet: optimize
+deploy-testnet: build
 	stellar contract deploy \
-	  --wasm target/wasm32-unknown-unknown/release/project_registry.optimized.wasm \
+	  --wasm target/wasm32v1-none/release/project_registry.wasm \
 	  --source $(STELLAR_SECRET_KEY) \
-	  --network testnet
+	  --network testnet \
+	  -- \
+	  --admin $(ADMIN_ADDRESS) \
+	  --whitelister $(WHITELISTER_ADDRESS)
 	stellar contract deploy \
-	  --wasm target/wasm32-unknown-unknown/release/investment_vault.optimized.wasm \
+	  --wasm target/wasm32v1-none/release/investment_vault.wasm \
 	  --source $(STELLAR_SECRET_KEY) \
-	  --network testnet
+	  --network testnet \
+	  -- \
+	  --admin $(ADMIN_ADDRESS) \
+	  --usdc_sac $(USDC_SAC_ADDRESS) \
+	  --registry $(REGISTRY_CONTRACT_ID)

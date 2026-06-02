@@ -10,7 +10,7 @@ mod types;
 
 mod registry_interface {
     soroban_sdk::contractimport!(
-        file = "../target/wasm32-unknown-unknown/release/project_registry.wasm"
+        file = "../target/wasm32v1-none/release/project_registry.wasm"
     );
 }
 
