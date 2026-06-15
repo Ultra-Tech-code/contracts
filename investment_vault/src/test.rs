@@ -1,10 +1,6 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{
-    testutils::Address as _,
-    token::StellarAssetClient,
-    Address, Env,
-};
+use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env};
 
 mod registry_contract {
     soroban_sdk::contractimport!(
@@ -31,7 +27,9 @@ fn setup() -> TestSetup {
 
     // Create mock USDC Stellar Asset Contract
     let usdc_admin = Address::generate(&env);
-    let usdc_sac = env.register_stellar_asset_contract_v2(usdc_admin.clone()).address();
+    let usdc_sac = env
+        .register_stellar_asset_contract_v2(usdc_admin.clone())
+        .address();
 
     // Register vault using constructor
     let contract_id = env.register(InvestmentVault, (&admin, &usdc_sac, &registry_id));
@@ -133,5 +131,9 @@ fn test_convert_to_shares_and_assets_roundtrip() {
     let preview_assets = s.vault_client.convert_to_assets(&preview_shares);
 
     let diff = (preview_assets - 500_0000000i128).abs();
-    assert!(diff <= 1, "roundtrip diff should be <= 1 stroop, got {}", diff);
+    assert!(
+        diff <= 1,
+        "roundtrip diff should be <= 1 stroop, got {}",
+        diff
+    );
 }

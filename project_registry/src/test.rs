@@ -26,10 +26,7 @@ fn test_create_project_by_whitelisted_address() {
 
     client.set_whitelist(&creator, &true);
 
-    let project_id = client.create_project(
-        &creator,
-        &String::from_str(&env, "ipfs://QmTest"),
-    );
+    let project_id = client.create_project(&creator, &String::from_str(&env, "ipfs://QmTest"));
 
     assert_eq!(project_id, 1);
     let project = client.get_project(&1);
@@ -125,11 +122,7 @@ fn test_get_all_projects() {
 
 // Integration: full Heliobond flow across both contracts
 mod integration {
-    use soroban_sdk::{
-        testutils::Address as _,
-        token::StellarAssetClient,
-        Address, Env, String,
-    };
+    use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
 
     mod vault_contract {
         soroban_sdk::contractimport!(
@@ -150,7 +143,9 @@ mod integration {
         let investor = Address::generate(&env);
 
         // Deploy mock USDC
-        let usdc_sac = env.register_stellar_asset_contract_v2(admin.clone()).address();
+        let usdc_sac = env
+            .register_stellar_asset_contract_v2(admin.clone())
+            .address();
         StellarAssetClient::new(&env, &usdc_sac).mint(&investor, &2_000_0000000i128);
 
         // Deploy registry with constructor
