@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, String, symbol_short};
+use soroban_sdk::{symbol_short, Address, Env, String};
 
 pub fn project_created(env: &Env, project_id: u32, owner: &Address, uri: &String) {
     env.events().publish(

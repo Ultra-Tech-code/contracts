@@ -1,17 +1,15 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, Address, Env, MuxedAddress, String};
-use stellar_tokens::fungible::{Base, FungibleToken};
-use stellar_tokens::fungible::burnable::FungibleBurnable;
 use stellar_access::ownable::{set_owner, Ownable};
 use stellar_macros::only_owner;
+use stellar_tokens::fungible::burnable::FungibleBurnable;
+use stellar_tokens::fungible::{Base, FungibleToken};
 
 mod events;
 mod types;
 
 mod registry_interface {
-    soroban_sdk::contractimport!(
-        file = "../target/wasm32v1-none/release/project_registry.wasm"
-    );
+    soroban_sdk::contractimport!(file = "../target/wasm32v1-none/release/project_registry.wasm");
 }
 
 pub use types::VaultKey;
@@ -25,7 +23,9 @@ impl InvestmentVault {
         set_owner(&env, &admin);
         env.storage().instance().set(&VaultKey::UsdcSac, &usdc_sac);
         env.storage().instance().set(&VaultKey::Registry, &registry);
-        env.storage().persistent().set(&VaultKey::TotalInvestments, &0i128);
+        env.storage()
+            .persistent()
+            .set(&VaultKey::TotalInvestments, &0i128);
         Base::set_metadata(
             &env,
             7,
@@ -52,8 +52,11 @@ impl InvestmentVault {
             panic!("insufficient liquid USDC");
         }
 
-        soroban_sdk::token::TokenClient::new(&env, &usdc_sac)
-            .transfer(&env.current_contract_address(), &project.owner, &amount);
+        soroban_sdk::token::TokenClient::new(&env, &usdc_sac).transfer(
+            &env.current_contract_address(),
+            &project.owner,
+            &amount,
+        );
 
         let prev: i128 = env
             .storage()
@@ -139,8 +142,11 @@ impl InvestmentVault {
         let shares = Self::convert_to_shares(env.clone(), usdc_amount);
 
         let usdc_sac: Address = env.storage().instance().get(&VaultKey::UsdcSac).unwrap();
-        soroban_sdk::token::TokenClient::new(&env, &usdc_sac)
-            .transfer(&from, &env.current_contract_address(), &usdc_amount);
+        soroban_sdk::token::TokenClient::new(&env, &usdc_sac).transfer(
+            &from,
+            &env.current_contract_address(),
+            &usdc_amount,
+        );
 
         Base::mint(&env, &from, shares);
         events::deposit(&env, &from, usdc_amount, shares);
@@ -165,8 +171,11 @@ impl InvestmentVault {
         }
 
         Base::burn(&env, &from, shares_amount);
-        soroban_sdk::token::TokenClient::new(&env, &usdc_sac)
-            .transfer(&env.current_contract_address(), &from, &usdc_returned);
+        soroban_sdk::token::TokenClient::new(&env, &usdc_sac).transfer(
+            &env.current_contract_address(),
+            &from,
+            &usdc_returned,
+        );
 
         events::withdraw(&env, &from, shares_amount, usdc_returned);
         usdc_returned
