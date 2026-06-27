@@ -1,7 +1,6 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, IntoVal, String};
 use soroban_sdk::{
     testutils::{Address as _, Ledger as _},
     token::StellarAssetClient,
@@ -225,6 +224,19 @@ fn test_update_credit_quality_score_boundary_values() {
 
 #[test]
 fn test_update_credit_quality_independent_of_green_impact() {
+    let (env, _admin, _whitelister, client) = setup();
+    let creator = Address::generate(&env);
+    client.set_whitelist(&creator, &true);
+    let id = client.create_project(&creator, &String::from_str(&env, "ipfs://Qm"), &0u64);
+
+    client.update_impact_score(&id, &60u32, &80u32);
+    client.update_credit_quality_score(&id, &45u32);
+
+    let project = client.get_project(&id);
+    assert_eq!(project.credit_quality, 45);
+    assert_eq!(project.green_impact, 80); // unchanged
+}
+
 // ── URI length edge cases (#119) ──────────────────────────────────────────────
 
 #[test]
@@ -354,18 +366,7 @@ fn test_interest_rate_zero_scores_is_base_rate() {
     let creator = Address::generate(&env);
     client.set_whitelist(&creator, &true);
     let id = client.create_project(&creator, &String::from_str(&env, "ipfs://Qm"), &0u64);
-
-    // Set both via update_impact_score first
-    client.update_impact_score(&id, &60u32, &80u32);
-    assert_eq!(client.get_project(&id).credit_quality, 60);
-    assert_eq!(client.get_project(&id).green_impact, 80);
-
-    // Update only credit_quality — green_impact must remain 80
-    client.update_credit_quality_score(&id, &45u32);
-    let project = client.get_project(&id);
-    assert_eq!(project.credit_quality, 45);
-    assert_eq!(project.green_impact, 80);
-    // credit_quality = 0, green_impact = 0 → rate = 1000 bps (10 %)
+    // credit_quality = 0, green_impact = 0 (default) → rate = 1000 bps (10%)
     assert_eq!(client.get_interest_rate(&id), 1_000u32);
 }
 
@@ -436,10 +437,13 @@ mod integration {
         );
         assert_eq!(project_id, 1);
 
-        // Investor deposits 2000 USDC → receives 2000 shares (1:1 on first deposit)
-        let shares = vault.deposit(&investor, &2_000_0000000i128);
-        assert_eq!(shares, 2_000_0000000i128);
-        assert_eq!(vault.balance(&investor), 2_000_0000000i128);
+        // Investor deposits 2000 USDC. First deposit is 1:1 on the investable amount
+        // (full deposit minus 0.5% insurance premium).
+        let deposit_amount = 2_000_0000000i128;
+        let investable = deposit_amount - deposit_amount * 50 / 10_000; // 19_900_000_000
+        let shares = vault.deposit(&investor, &deposit_amount);
+        assert_eq!(shares, investable);
+        assert_eq!(vault.balance(&investor), investable);
 
         // Admin updates impact scores (oracle step)
         registry.update_impact_score(&project_id, &80u32, &60u32);
@@ -460,7 +464,7 @@ mod integration {
         let returned = vault.withdraw(&investor, &half_shares);
         assert_eq!(returned, 1_175_0000000i128);
 
-        // Remaining shares and balance
-        assert_eq!(vault.balance(&investor), 1_000_0000000i128);
+        // Remaining shares = half of investable
+        assert_eq!(vault.balance(&investor), investable / 2);
     }
 }
