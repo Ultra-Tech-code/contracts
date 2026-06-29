@@ -63,12 +63,17 @@ pub enum VaultError {
     DuplicateApproval = 27,
     /// The operation did not include enough multi-sig approvals.
     InsufficientApprovals = 28,
-    /// The current state version is unsupported.
+    /// Contract state version does not match the expected version; migration required.
     UnsupportedStateVersion = 29,
+    /// The project_id does not correspond to an existing project in the registry.
+    ProjectNotFound = 30,
+    /// Deposit amount is below the minimum allowed (MIN_DEPOSIT).
+    DepositBelowMinimum = 31,
+    WithdrawBelowMinimum = 34,
     /// Slippage limit was exceeded during withdrawal.
-    SlippageLimitExceeded = 30,
+    SlippageLimitExceeded = 32,
     /// The vault is currently paused.
-    Paused = 31,
+    Paused = 33,
 }
 
 #[contracttype]

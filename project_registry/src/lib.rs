@@ -121,8 +121,27 @@ impl ProjectRegistry {
         if uri_len > MAX_URI_LEN {
             panic_with_error!(&env, RegistryError::UriTooLong);
         }
-        // Validate URI scheme (simplified for now since String cannot be sliced directly)
-        let has_valid_scheme = true;
+        // Validate URI scheme: must start with ipfs://, https://, or ar:// (#29)
+        let uri_bytes = uri.to_bytes();
+        let mut has_valid_scheme = false;
+        if uri_len >= 7 {
+            let prefix7 = String::from(uri_bytes.slice(0..7));
+            if prefix7 == String::from_str(&env, "ipfs://") {
+                has_valid_scheme = true;
+            }
+        }
+        if !has_valid_scheme && uri_len >= 8 {
+            let prefix8 = String::from(uri_bytes.slice(0..8));
+            if prefix8 == String::from_str(&env, "https://") {
+                has_valid_scheme = true;
+            }
+        }
+        if !has_valid_scheme && uri_len >= 5 {
+            let prefix5 = String::from(uri_bytes.slice(0..5));
+            if prefix5 == String::from_str(&env, "ar://") {
+                has_valid_scheme = true;
+            }
+        }
         if !has_valid_scheme {
             panic_with_error!(&env, RegistryError::InvalidUriScheme);
         }
@@ -462,8 +481,7 @@ impl ProjectRegistry {
             .unwrap_or_else(|| panic_with_error!(&env, RegistryError::ProjectNotFound));
 
         let old_cq = project.credit_quality;
-        let old_rate = compute_rate(old_cq, project.green_impact);
-
+        let old_rate = compute_rate(project.credit_quality, project.green_impact);
         project.credit_quality = credit_quality;
         project.last_update_timestamp = env.ledger().timestamp();
         let new_rate = compute_rate(credit_quality, project.green_impact);
