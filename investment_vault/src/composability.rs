@@ -73,7 +73,7 @@ pub trait VaultOperationInterface {
     fn deposit(env: Env, from: Address, usdc_amount: i128) -> i128;
 
     /// Burn HBS shares and withdraw USDC (may enqueue if liquidity low).
-    fn withdraw(env: Env, from: Address, shares_amount: i128) -> i128;
+    fn withdraw(env: Env, from: Address, shares_amount: i128, min_usdc_return: i128) -> i128;
 
     /// Claim accumulated yield for `from`.
     fn claim_yield(env: Env, from: Address) -> i128;

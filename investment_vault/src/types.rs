@@ -63,6 +63,12 @@ pub enum VaultError {
     DuplicateApproval = 27,
     /// The operation did not include enough multi-sig approvals.
     InsufficientApprovals = 28,
+    /// The current state version is unsupported.
+    UnsupportedStateVersion = 29,
+    /// Slippage limit was exceeded during withdrawal.
+    SlippageLimitExceeded = 30,
+    /// The vault is currently paused.
+    Paused = 31,
 }
 
 #[contracttype]
@@ -71,6 +77,8 @@ pub enum VaultKey {
     UsdcSac,
     Registry,
     TotalInvestments,
+    CachedExpectedReturns,
+    CachedTotalAssets,
     ProjectInvestment(u32),
     /// Global yield-per-share accumulator, scaled by YIELD_SCALE (#125).
     YieldPerShareAccum,
@@ -116,7 +124,12 @@ pub enum VaultKey {
     ReportingSnapshot,
     /// Maximum transaction amount for compliance (0 = no limit).
     MaxTransactionAmount,
-
+    /// Multi-sig signers list.
+    MultiSigSigners,
+    /// Multi-sig approval threshold.
+    MultiSigThreshold,
+    /// Circuit breaker pause state.
+    Paused,
 }
 
 /// Container for wormhole bridge data keys.

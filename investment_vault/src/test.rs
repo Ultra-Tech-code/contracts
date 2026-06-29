@@ -103,7 +103,7 @@ fn test_vault_with_zero_supply() {
 fn test_withdraw_with_zero_supply_panics() {
     let s = setup();
     let investor = Address::generate(&s.env);
-    s.vault_client.withdraw(&investor, &10_0000000i128);
+    s.vault_client.withdraw(&investor, &10_0000000i128, &0);
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn test_withdraw_returns_usdc() {
     mint_usdc(&s.env, &s.usdc_sac, &investor, 1_000_0000000i128);
 
     let shares = s.vault_client.deposit(&investor, &1_000_0000000i128);
-    let returned = s.vault_client.withdraw(&investor, &shares);
+    let returned = s.vault_client.withdraw(&investor, &shares, &0);
 
     assert_eq!(returned, 1_000_0000000i128);
     assert_eq!(s.vault_client.balance(&investor), 0);
@@ -494,7 +494,7 @@ fn test_withdraw_fails_when_all_usdc_deployed() {
     s.vault_client.fund_project(&project_id, &995_0000000i128);
 
     // Full share redemption requires ~1000 USDC but only 5 liquid remain
-    s.vault_client.withdraw(&investor, &shares);
+    s.vault_client.withdraw(&investor, &shares, &0);
 }
 
 // ── Issue #118: block share transfer to vault address ─────────────────────
@@ -522,7 +522,7 @@ fn test_full_withdrawal_with_no_investments() {
     let shares = s.vault_client.deposit(&investor, &1_000_0000000i128);
 
     // Full withdrawal with no outstanding investments drains the vault cleanly
-    s.vault_client.withdraw(&investor, &shares);
+    s.vault_client.withdraw(&investor, &shares, &0);
 
     assert_eq!(s.vault_client.total_supply(), 0);
     assert_eq!(s.vault_client.balance(&investor), 0);
@@ -549,7 +549,7 @@ fn test_full_withdrawal_blocked_by_outstanding_investments() {
     s.vault_client.fund_project(&project_id, &1_000_0000000i128);
 
     // Full share redemption needs 2000 USDC but only 1000 liquid — must fail
-    s.vault_client.withdraw(&investor, &shares);
+    s.vault_client.withdraw(&investor, &shares, &0);
 }
 
 #[test]
@@ -743,7 +743,7 @@ fn test_withdraw_enqueues_when_insufficient_liquidity() {
     s.vault_client.fund_project(&project_id, &490_0000000i128);
 
     // Shares are worth ~1000 USDC but only ~510 USDC is liquid — should enqueue.
-    let returned = s.vault_client.withdraw(&investor, &shares);
+    let returned = s.vault_client.withdraw(&investor, &shares, &0);
 
     assert_eq!(returned, 0); // queued, not immediate
     assert_eq!(s.vault_client.balance(&investor), 0); // shares burned at enqueue
@@ -770,7 +770,7 @@ fn test_claim_settles_queued_redemption() {
 
     // Queue the withdrawal.
     let owed = s.vault_client.convert_to_assets(&shares);
-    s.vault_client.withdraw(&investor1, &shares);
+    s.vault_client.withdraw(&investor1, &shares, &0);
 
     // Add liquidity: second investor deposits enough to cover the queued claim.
     let investor2 = Address::generate(&s.env);
@@ -814,7 +814,7 @@ fn test_withdraw_emits_event() {
     mint_usdc(&s.env, &s.usdc_sac, &investor, 1_000_0000000i128);
     let shares = s.vault_client.deposit(&investor, &1_000_0000000i128);
 
-    s.vault_client.withdraw(&investor, &shares);
+    s.vault_client.withdraw(&investor, &shares, &0);
 
     // env.events().all() returns events from the most recent invocation only.
     // Withdraw emits a token burn event (Base::burn) + the Withdrawn application event = 2.
@@ -867,7 +867,7 @@ fn test_withdraw_queued_emits_event() {
     s.vault_client.fund_project(&project_id, &490_0000000i128);
 
     // Withdrawal exceeds liquid USDC — should enqueue and emit WithdrawQueued.
-    let returned = s.vault_client.withdraw(&investor, &shares);
+    let returned = s.vault_client.withdraw(&investor, &shares, &0);
     assert_eq!(returned, 0);
 
     // env.events().all() returns events from the most recent invocation only.
@@ -895,7 +895,7 @@ fn test_claim_queued_emits_event() {
         registry_client.create_project(&creator, &String::from_str(&s.env, "ipfs://Qm"), &0u64);
     // Fund 490 USDC (49% util) to stay below the 50% graduated withdrawal limit.
     s.vault_client.fund_project(&project_id, &490_0000000i128);
-    s.vault_client.withdraw(&investor, &shares);
+    s.vault_client.withdraw(&investor, &shares, &0);
 
     // Restore liquidity so claim() can settle.
     let investor2 = Address::generate(&s.env);
@@ -964,7 +964,7 @@ fn test_high_utilization_withdrawal_emits_warning_event() {
 
     // Withdraw a small amount within the utilization limit — warning event should fire.
     let small_shares = shares / 100; // 1% of total shares
-    s.vault_client.withdraw(&investor, &small_shares);
+    s.vault_client.withdraw(&investor, &small_shares, &0);
 
     // env.events().all() returns events from the most recent invocation only.
     // High-util withdraw emits: burn + utilization_warning + withdraw = 3 vault events.

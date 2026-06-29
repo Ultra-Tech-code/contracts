@@ -58,6 +58,7 @@ const YIELD_SCALE: i128 = 1_000_000_000_000_000_000; // 1e18
 /// 50 bps = 0.5 % of deposit amount.
 const INSURANCE_PREMIUM_BPS: i128 = 50;
 const MAX_MULTISIG_SIGNERS: u32 = 10;
+const STATE_VERSION: u32 = 1;
 
 mod composability;
 mod events;
@@ -134,6 +135,8 @@ impl InvestmentVault {
         // Validate that registry is a deployed ProjectRegistry contract by calling it.
         // This panics at construction time if the address is invalid.
         registry_interface::Client::new(&env, &registry).total_projects();
+        // Validate that usdc_sac is a valid SAC.
+        soroban_sdk::token::TokenClient::new(&env, &usdc_sac).balance(&env.current_contract_address());
         env.storage()
             .instance()
             .set(&VaultKey::StateVersion, &STATE_VERSION);
@@ -197,6 +200,7 @@ impl InvestmentVault {
     /// `ProjectRegistry`, not to an arbitrary address.
     #[only_owner]
     pub fn fund_project(env: Env, project_id: u32, amount: i128) {
+        require_not_paused(&env);
         require_multisig_disabled(&env);
         fund_project_internal(env, project_id, amount);
     }
@@ -241,7 +245,7 @@ impl InvestmentVault {
                     / 200;
             }
         }
-
+        expected
     }
 
     /// Return the vault's net asset value (NAV) from cache (#81).
@@ -302,6 +306,7 @@ impl InvestmentVault {
     ///
     /// The remaining investable amount is converted to shares at the current NAV.
     pub fn deposit(env: Env, from: Address, usdc_amount: i128) -> i128 {
+        require_not_paused(&env);
         require_current_state(&env);
         from.require_auth();
         if usdc_amount <= 0 {
@@ -411,7 +416,8 @@ impl InvestmentVault {
     /// (see `get_utilization_bps`). If the vault has insufficient liquid USDC to pay
     /// the full redemption, shares are burned immediately and the claim is enqueued
     /// in FIFO order — call `claim()` once liquidity is restored.
-    pub fn withdraw(env: Env, from: Address, shares_amount: i128) -> i128 {
+    pub fn withdraw(env: Env, from: Address, shares_amount: i128, min_usdc_return: i128) -> i128 {
+        require_not_paused(&env);
         require_current_state(&env);
         // Note: from.require_auth() is called inside Base::burn
         if shares_amount <= 0 {
@@ -441,6 +447,9 @@ impl InvestmentVault {
         }
         if usdc_returned > max_withdraw {
             panic_with_error!(&env, VaultError::WithdrawalExceedsLimit);
+        }
+        if usdc_returned < min_usdc_return {
+            panic_with_error!(&env, VaultError::SlippageLimitExceeded);
         }
 
         if usdc_returned > liquid {
@@ -572,9 +581,6 @@ impl InvestmentVault {
     pub fn receive_yield(env: Env, from: Address, amount: i128) {
         require_multisig_disabled(&env);
         receive_yield_internal(env, from, amount);
-    }
-
-
     }
 
     /// Return the USDC yield claimable by `account` without modifying state.
@@ -1600,6 +1606,44 @@ fn require_multisig_disabled(env: &Env) {
         .unwrap_or(0);
     if threshold > 0 {
         panic_with_error!(env, VaultError::InsufficientApprovals);
+    }
+}
+
+fn read_state_version(env: &Env) -> u32 {
+    env.storage().instance().get(&VaultKey::StateVersion).unwrap_or(0)
+}
+
+fn require_current_state(env: &Env) {
+    if read_state_version(env) < STATE_VERSION {
+        panic_with_error!(env, VaultError::UnsupportedStateVersion);
+    }
+}
+
+fn require_not_paused(env: &Env) {
+    let paused: bool = env.storage().instance().get(&VaultKey::Paused).unwrap_or(false);
+    if paused {
+        panic_with_error!(env, VaultError::Paused);
+    }
+}
+
+#[contractimpl]
+impl InvestmentVault {
+    #[only_owner]
+    pub fn pause(env: Env) {
+        env.storage().instance().set(&VaultKey::Paused, &true);
+        events::paused(&env);
+    }
+
+    #[only_owner]
+    pub fn unpause(env: Env) {
+        env.storage().instance().set(&VaultKey::Paused, &false);
+        events::unpaused(&env);
+    }
+    
+    #[only_owner]
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        // events::upgraded(&env) could be called here if needed
     }
 }
 
