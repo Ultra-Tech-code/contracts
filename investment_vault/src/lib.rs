@@ -1,4 +1,42 @@
 #![no_std]
+//! # InvestmentVault Contract
+//!
+//! ## Cross-Contract Trust Boundaries (#22)
+//!
+//! This contract makes cross-contract calls to the ProjectRegistry via the imported WASM interface.
+//! 
+//! ### Trust Assumptions:
+//! - The vault trusts the registry to return valid ProjectData with legitimate owner addresses
+//! - The vault trusts the registry's total_projects() return value for iteration
+//! - A compromised or malicious registry could return manipulated data
+//!
+//! ### Mitigations:
+//! - Registry address is validated at construction via total_projects() call
+//! - Registry can only be changed by admin via set_registry() which re-validates
+//! - Tests include scenarios for unexpected registry responses (e.g., zero address owner)
+//! - Consider using a registry interface trait with known-good implementations
+//!
+//! ## i128 Arithmetic and Overflow Protection (#25)
+//!
+//! All financial calculations use i128. Soroban runtime includes overflow checks enabled
+//! via `overflow-checks = true` in Cargo.toml profile.release.
+//!
+//! ### Overflow Behavior:
+//! - Arithmetic overflow triggers a panic and transaction revert
+//! - Maximum safe deposit: 1 billion USDC (MAX_DEPOSIT constant)
+//! - Share calculations use proportional ratios: shares = usdc * total_shares / total_assets
+//! - Yield accumulator scaled by 1e18 (YIELD_SCALE) for precision
+//!
+//! ### Maximum Safe Values:
+//! - Single deposit: 1,000,000,000 USDC (1 billion, 7 decimals = 1e16)
+//! - Total vault assets: Theoretically up to i128::MAX / 1e18 for yield calculations
+//! - In practice, economic limits constrain values well below overflow thresholds
+//!
+//! ### Critical Path Arithmetic:
+//! - deposit(): usdc_amount * total_shares / total_assets (checked)
+//! - withdraw(): shares_amount * total_assets / total_shares (checked)
+//! - receive_yield(): amount * YIELD_SCALE / total_shares (checked)
+//!
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, MuxedAddress, String,
     Vec,
