@@ -307,7 +307,9 @@ fn test_initialize() {
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let usdc = Address::generate(&env);
+    let usdc = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
     let registry = env.register(registry_contract::WASM, (&admin, &admin));
     let contract_id = env.register(InvestmentVault, (&admin, &usdc, &registry));
     let client = InvestmentVaultClient::new(&env, &contract_id);
@@ -366,7 +368,9 @@ fn test_constructor_panics_with_invalid_registry() {
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let usdc = Address::generate(&env);
+    let usdc = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
     let invalid_registry = Address::generate(&env);
     let _contract_id = env.register(InvestmentVault, (&admin, &usdc, &invalid_registry));
 }

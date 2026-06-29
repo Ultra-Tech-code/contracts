@@ -4,7 +4,7 @@
 //! ## Cross-Contract Trust Boundaries (#22)
 //!
 //! This contract makes cross-contract calls to the ProjectRegistry via the imported WASM interface.
-//! 
+//!
 //! ### Trust Assumptions:
 //! - The vault trusts the registry to return valid ProjectData with legitimate owner addresses
 //! - The vault trusts the registry's total_projects() return value for iteration
@@ -136,7 +136,8 @@ impl InvestmentVault {
         // This panics at construction time if the address is invalid.
         registry_interface::Client::new(&env, &registry).total_projects();
         // Validate that usdc_sac is a valid SAC.
-        soroban_sdk::token::TokenClient::new(&env, &usdc_sac).balance(&env.current_contract_address());
+        soroban_sdk::token::TokenClient::new(&env, &usdc_sac)
+            .balance(&env.current_contract_address());
         env.storage()
             .instance()
             .set(&VaultKey::StateVersion, &STATE_VERSION);
@@ -220,13 +221,11 @@ impl InvestmentVault {
         for funding in fundings.iter() {
             fund_project_internal(env.clone(), funding.0, funding.1);
         }
-
     }
 
     /// Return cached expected returns — updated incrementally on `fund_project` (#81).
     /// Use `refresh_expected_returns` to manually recompute from scratch.
     pub fn get_expected_returns(env: Env) -> i128 {
-
         let registry_addr: Address = env.storage().instance().get(&VaultKey::Registry).unwrap();
         let registry = registry_interface::Client::new(&env, &registry_addr);
         let total_projects = registry.total_projects();
@@ -252,7 +251,6 @@ impl InvestmentVault {
     /// Use `refresh_total_assets` to recompute from scratch if the cache
     /// may be stale (e.g., after a direct USDC transfer to the vault address).
     pub fn total_assets(env: Env) -> i128 {
-
         let usdc_sac: Address = env.storage().instance().get(&VaultKey::UsdcSac).unwrap();
         let liquid = soroban_sdk::token::TokenClient::new(&env, &usdc_sac)
             .balance(&env.current_contract_address());
@@ -736,8 +734,6 @@ impl InvestmentVault {
             .set(&VaultKey::MultiSigThreshold, &threshold);
     }
 
-
-
     pub fn get_multisig_admin(env: Env) -> (Vec<Address>, u32) {
         let signers = env
             .storage()
@@ -887,6 +883,7 @@ impl InvestmentVault {
     #[only_owner]
     pub fn set_registry(env: Env, new_registry: Address) {
         require_current_state(&env);
+        registry_interface::Client::new(&env, &new_registry).total_projects();
         let old: Address = env.storage().instance().get(&VaultKey::Registry).unwrap();
         env.storage()
             .instance()
@@ -967,11 +964,10 @@ impl InvestmentVault {
     #[only_owner]
     pub fn set_trusted_emitter(
         env: Env,
-        chain_id: u32,
-        emitter_address: BytesN<32>,
-        trusted: bool,
+        _chain_id: u32,
+        _emitter_address: BytesN<32>,
+        _trusted: bool,
     ) {
-
     }
 
     pub fn initiate_bridge_transfer(
@@ -1610,7 +1606,10 @@ fn require_multisig_disabled(env: &Env) {
 }
 
 fn read_state_version(env: &Env) -> u32 {
-    env.storage().instance().get(&VaultKey::StateVersion).unwrap_or(0)
+    env.storage()
+        .instance()
+        .get(&VaultKey::StateVersion)
+        .unwrap_or(0)
 }
 
 fn require_current_state(env: &Env) {
@@ -1620,7 +1619,11 @@ fn require_current_state(env: &Env) {
 }
 
 fn require_not_paused(env: &Env) {
-    let paused: bool = env.storage().instance().get(&VaultKey::Paused).unwrap_or(false);
+    let paused: bool = env
+        .storage()
+        .instance()
+        .get(&VaultKey::Paused)
+        .unwrap_or(false);
     if paused {
         panic_with_error!(env, VaultError::Paused);
     }
@@ -1639,7 +1642,7 @@ impl InvestmentVault {
         env.storage().instance().set(&VaultKey::Paused, &false);
         events::unpaused(&env);
     }
-    
+
     #[only_owner]
     pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
         env.deployer().update_current_contract_wasm(new_wasm_hash);

@@ -10,7 +10,8 @@
 //! vault's WASM, which generates a typed client. These traits document the
 //! expected interface and can be implemented by mock contracts in tests.
 
-use soroban_sdk::{Address, Env};
+#![allow(dead_code, unused_imports)]
+use soroban_sdk::{Address, BytesN, Env, String, Vec};
 
 use crate::types::{CarbonCreditCalculation, PortfolioInfo, RegulatoryReport};
 
@@ -64,7 +65,8 @@ pub trait VaultQueryInterface {
     fn export_regulatory_data(env: Env) -> RegulatoryReport;
 
     /// Calculate carbon credits for a project investment.
-    fn calculate_carbon_credits(env: Env, project_id: u32, amount: i128) -> CarbonCreditCalculation;
+    fn calculate_carbon_credits(env: Env, project_id: u32, amount: i128)
+        -> CarbonCreditCalculation;
 }
 
 /// Vault operation interface for deposits, withdrawals, and yield claims.

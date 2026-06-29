@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use soroban_sdk::{contractevent, Address, BytesN, Env, String};
 
 /// Emitted when an investor deposits USDC and receives vault shares.
